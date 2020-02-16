@@ -43,6 +43,7 @@ GNU ld (GNU Binutils for Ubuntu) 2.30
 * 링커 스크립트 추가 설명
 * binutils의 각종 옵션들 설명
 * qemu + gdb 설명\(+ real mode debugging\)
+* Bios service site
 
 ### Original File
 
