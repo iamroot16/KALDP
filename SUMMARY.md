@@ -1,4 +1,4 @@
 # Table of contents
 
-* [Initial page](README.md)
+* [Linux Kernel 0.01](README.md)
 
