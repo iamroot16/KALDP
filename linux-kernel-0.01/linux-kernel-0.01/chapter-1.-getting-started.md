@@ -1,4 +1,4 @@
-# Chapter 1. Getting Started
+# Chapter 1. 시작하기
 
 ## 1.1. Introduction
 

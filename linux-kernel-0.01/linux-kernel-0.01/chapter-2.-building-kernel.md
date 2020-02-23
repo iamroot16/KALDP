@@ -1,4 +1,4 @@
-# Chapter 2. Building Kernel
+# Chapter 2. 커널 빌드
 
 ## 2.1. Getting 0.01 Up And Running
 
@@ -51,4 +51,11 @@ LIBS    =lib/lib.a
 
 * 문제. include 파일 내의 헤더 파일에 함수 선언이 들어가 중복 정의가 발생한다.\(extern inline vs static inline\)
 * 문제. inline assembly의 clobber list에서 오류가 발생한다.
-* 
+* 문제. symbol resolution 
+
+
+
+수정 중...
+
+
+
