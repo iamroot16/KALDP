@@ -26,43 +26,93 @@ main.c 파일은 이름대로 main 함수를 포함하고 있다. head.s에서 m
 
 ### 5.1.4.1. Software int 0x80 - kernel/system\_call.s
 
+해당 파일은 프로세스가 시스템 콜을 호출하거나, 예외를 발생했을때 처리되는 코드를 다루고 있다. 또한 시스템 콜을 호출했을 때 어떤 서비스를 실행해야 하는지를 구현한다. 또한 프로세스간 시그널 처리에 관련된 코드와, fork, exec, 타이머 인터럽트, 하드 디스크 인터럽트 핸들러도 구현한다.
+
 ### 5.1.4.2. System Calls - kernel/sys.c
+
+해당 파일은 몇몇 시스템 콜을 구현한다. 
 
 ### 5.1.4.3. Exceptions - kernel/asm.s, kernel/traps.c
 
+asm.s는 특정 예외 핸들러에 관련된 내용을,  traps.c는 IDT에 인터럽트 핸들러를 세팅한다. 
+
 ### 5.1.4.4. Console Functions - kernel/console.c, kernel/tty\_io.c
+
+콘솔에 관련된 내용을 다룬다.
 
 ### 5.1.4.5. Miscellaneous Files - kenel/panic.c, kernel/mktime.c, kernel/vsprintf.c, kernel/printk.c
 
+해당 파일은 커널 코어에서 굉장히 중요한 역할을 한다. printk 함수가 없다면 우리는 어떤 메시지도 출력할 수 없다.
+
 ### 5.1.4.6. Device Handling Code - kernel/hd.c, kernel/keyboard.s, kernel/rs\_io.s
+
+이름과 같이 해당 파일들은 디바이스 관련된 인터럽트들을 다루고 있다. 디바이스를 다루기 위한 버퍼/큐들을 다룬다.
 
 ### 5.1.4.7. Important System Calls - fork\(\) & exit\(\) - kernel/fork.c, kernel/exit.c
 
+fork 시스템 콜의 중요성은 계속해서 강조해도 부족하다. OS 코드를 처음 보는 사람에게는 fork의 구현은 정말 아름다울 것이다. exit 시스템 콜또한 중요하다. 그러나 그 구현은 fork의 아름다움보다는 덜하다.
+
 ### 5.1.4.8. The “heart” of the Kernel - scheduler - os/sched.c
+
+우리는 앞서 타이머 인터럽트가 다중 시분할 OS의 심장이라고 언급했었다. 이 부분을 다루는 코드는 kernel/sched.c에서 다뤄진다. 타이머 인터럽트는 각각의 태스크가 실행된 시간을 알 수 있도록 한다. 만약 현재 태스크가 퀀텀 타임\(태스크에게 할당된 시간\)을 초과한다면, 다른 태스크를 실행하도록 스케줄링한다. 스케줄러는 태스크가 IO를 발생할 때에도 호출된다. IO가 완료되면 대기하던 태스크를 깨운다. kernel/sched.c는 이 외에도 여러 시스템 콜을 구현한다.
 
 ## 5.1.5. linux/mm Directory
 
+### 5.1.5.1. Page Fault Handler - mm/page.s
+
+앞서 언급했듯이, 페이지 폴트 핸들러는 두 가지 이유로 호출된다. 하나는 읽기 전용 페이지에 쓰려고 하거나, 다른 하나는 물리 페이지 프레임이 존재하지 않을 때이다. 해당 파일은 페이지 폴트가 발생했을 때 실행된다. 
+
+### 5.1.5.2. C code for Page Not Present and Page Not Writable - mm/memory.c
+
+해당 파일은 읽기 전용 페이지에 쓰려고 할 때 실행되는 코드를 담고 있다.
+
+## 5.1.6. linux/fs Directory
+
 ### 5.1.6.1. fs/super.c
+
+이 파일은 하드 디스크 위의 파일 시스템의 시작점이다. 슈퍼 블록을 읽고, 파일 시스템 구성 사항을 식별한다. 또한 루트 아이노드와 같은 커널 변수를 초기화 한다.
 
 ### 5.1.6.2. fs/buffer.c
 
+해당 파일은 raw read/write 메커니즘 위의 레이어를 다룬다. read write은 최적화를 위해 버퍼에 캐시된다. 따라서 버퍼는 디스크 블록에 대응하고, free될 때 디스크에 write back된다. 
+
 ### 5.1.6.3. fs/bitmap.c, fs/inode.c, fs/namei.c, fs/truncate.c
+
+커널은 루트 파일 시스템을 마운트하고, 파일 시스템의 시작점을 위해 루트 아이노드를 생성한다. 이제 파일 시스템에 대한 접근\(파일 생성/삭제\)은 아이노드를 통해서 진행된다. 
 
 ### 5.1.6.4. fs/block\_dev.c, fs/file\_dev.c, fs/char\_dev.c
 
+0.01에는 3가지 종류의 디바이스가 지원된다. 블록 드바이스\(/dev/hda\) 파일, 파일 디바이스\(root/test.c\), 문자 디바이스\(dev/tty0\). 해당 디바이스에 대한 read와 write는 각각의 파일에서 구현된다. file\_dev.c와 block\_dev.c는 디스크 의 저수준 read/write 함수를 사용한다. 
+
 ### 5.1.6.5. fs/file\_table.c
+
+시스템에서 열려 있는 파일을 저장하는 배열이다.
 
 ### 5.1.6.6. fs/open.c, fs/read\_write.c
 
+무슨 타입의 파일이든 우리는 open, read, write 시스템 콜을 사용할 수 있다.해당 파일을 통해 커널에서 가장 높은 수준의 추상화 레이어를 제공한다.  
+
 ### 5.1.6.7. fs/fcntl.c, fs/ioctl.c, fs/tty\_ioctl.c, fs/stat.c
+
+open/read/write 시스템 콜에 영향을 줄 수 있는 시스템 콜을 구현하고 있다.
 
 ### 5.1.6.8. fs/pipe.c
 
+pipe을 구현하고 있다.
+
 ### 5.1.6.9. fs/exec.c
+
+커널에서 두 번째로 아름다운 시스템 콜 구현이다. 이 파일은 exec 시스템 콜을 구현한다. 구현은 fork 보다는 좀 더 복잡하다.\(fork는 태스크 정보를 복사만 하면되지만, exec은 디스크로부터 데이터를 읽어야 한다\)
 
 ## 5.1.7. linux/lib Directory
 
+해당 코드는 커널의 일부분은 아니다. 대신 사용자 프로그램을 위해 함께 패키징 되는 라이브러리이다. 이 파일들은 사용자 레벨의 프로그램이 시스템 콜을 쉽게 호출할 수 있도록 한다. 
+
 ## 5.1.8. linux/include Directory
 
-## 5.1.9. linux/tools Directory
+이름과 같이 C 파일과 함께 포함되어야 하는 파일들을 포함하고 있다. 하지만 string.h와 같은 파일은 어셈블리로 짜여진 코드도 포함하고 있다. 디렉토리는 서브 디렉토리를 가지고 있고, 각종 유틸리티 매크로를 가지고 있다. 
+
+
+
+
 
