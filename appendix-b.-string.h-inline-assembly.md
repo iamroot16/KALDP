@@ -53,7 +53,6 @@ static inline char * strncpy(char * dest,const char *src,int count)
 * **Line 4~5**: count의 값을 1 감소 시킨다. 음수라면, 2번 라벨로 점프한다.
 * **Line 6~9**: strcpy의 내용과 동일
 * **Line 10~12**: 남은 count만큼 stosb 반복한다. 즉 count만큼 NULL을 edi에 복사한다.
-* **Lien 14**: 생략
 
 ```c
 static inline char * strcat(char * dest,const char * src)
