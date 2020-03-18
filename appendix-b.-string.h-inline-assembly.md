@@ -140,5 +140,81 @@ static inline int strcmp(const char * cs,const char * ct)
 * **Line 9~12**: ax가 NULL인지 확인한다. 아니라면 1번 라벨로 점프한다. 맞다면, eax를 0으로 세팅하고 리턴한다.
 * **Line  13~15**: 1을 리턴할지, 1을 리턴할지 결정한다.
 
+```c
+static inline int strncmp(const char * cs,const char * ct,int count)
+{
+	int d0, d1, d2;
+	register int __res __asm__("ax");
+	__asm__("cld\n"
+		"1:\tdecl %6\n\t"
+		"js 2f\n\t"
+		"lodsb\n\t"
+		"scasb\n\t"
+		"jne 3f\n\t"
+		"testb %%al,%%al\n\t"
+		"jne 1b\n"
+		"2:\txorl %%eax,%%eax\n\t"
+		"jmp 4f\n"
+		"3:\tmovl $1,%%eax\n\t"
+		"jl 4f\n\t"
+		"negl %%eax\n"
+		"4:"
+		:"=a" (__res), "=&D" (d0), "=&S" (d1), "=&c" (d2)
+		:"1" (cs),"2" (ct),"3" (count));
+	return __res;
+}
+```
 
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~7**: count를 감소하고 음수라면 2번 라벨로 점프한다.
+* **Line 8~9**: ds:esi에서 1바이트를 ax에 로드하고 es:edi의 값과 cmp한다.
+* **Line 10**: 같지 않다면 3번 라벨로 점프한다.
+* **Line 11~14**: ax가 NULL인지 확인한다. 아니라면 1번 라벨로 점프한다. 맞다면, eax를 0으로 세팅하고 리턴한다.
+* **Line  15~17**: 1을 리턴할지, 1을 리턴할지 결정한다.
+
+```c
+static inline char * strchr(const char * s,char c)
+{
+	int d0;
+	register char * __res __asm__("ax");
+	__asm__("cld\n\t"
+		"movb %%al,%%ah\n"
+		"1:\tlodsb\n\t"
+		"cmpb %%ah,%%al\n\t"
+		"je 2f\n\t"
+		"testb %%al,%%al\n\t"
+		"jne 1b\n\t"
+		"movl $1,%1\n"
+		"2:\tmovl %1,%0\n\t"
+		"decl %0"
+		:"=a" (__res), "=&S" (s)
+		:"1" (s),"0" (c));
+	return __res;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6**: c를 ah으로 이동
+* **Line 7~8**:  ds:esi로부터 1바이트를 읽고, al에 저장하고 ah와 비교한다.
+* **Line 9**: 동일하면 2번 라벨로 점프한다.
+* **Line 10~11**: NULL에 도달할 때까지 1번 라벨로 점프한다.
+* **Line 12~14**: 못찾으면 0을 리턴하고, 찾았다면 찾은 주소\(esi\)를 리턴한다.
+
+```c
+static inline char * strrchr(const char * s,char c)
+{
+	register char * __res __asm__("dx");
+	__asm__("cld\n\t"
+		"movb %%al,%%ah\n"
+		"1:\tlodsb\n\t"
+		"cmpb %%ah,%%al\n\t"
+		"jne 2f\n\t"
+		"movl %%esi,%0\n\t"
+		"decl %0\n"
+		"2:\ttestb %%al,%%al\n\t"
+		"jne 1b"
+		:"=d" (__res):"0" (0),"S" (s),"a" (c));
+	return __res;
+}
+```
 
