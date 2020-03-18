@@ -20,7 +20,7 @@ static inline char * strcpy(char * dest,const char *src)
 * **Line 4**: **lods**\(load string\) ds:esi에서 1/2/4바이트를 AL, AX 또는 EAX 레지스터에 로드한다. 읽은 만큼 esi 레지스터 값이 DF플래그에 따라 증가 또는 감소한다.
 * **Line 5**: **stos**\(store string\) AL, AX 또는 EAX 레지스터에서 1/2/4 바이트를 es:edi/di에 store한다. 저장한 만큼 edi 레지스터 값이 DF플래그에 따라 증가 또는 감소한다.
 * **Line 6~7**: 읽은 값\(ax\)가 NULL이 아니면 1번 라벨로 돌아간다.
-* **Line 8:** 
+* **Line 8:**  이하 생략
   * input: esi\(dummy0\), edi\(dummy1\)
   * output: esi\(src\), edi\(dest\)
   * clobber: ax
