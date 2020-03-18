@@ -67,7 +67,7 @@ static inline char * strcat(char * dest,const char * src)
 		"stosb\n\t"
 		"testb %%al,%%al\n\t"
 		"jne 1b"
-		:"S"(d0), "D"(d1), "a"(d2)
+		:"=&S"(d0), "=&D"(d1), "=&a"(d2)
 		:"0" (src),"1" (dest),"2" (0),"c" (0xffffffff));
 	return dest;
 }
@@ -83,12 +83,13 @@ static inline char * strcat(char * dest,const char * src)
 ```c
 static inline char * strncat(char * dest,const char * src,int count)
 {
+	int d0, d1, d2;
 	__asm__("cld\n\t"
 		"repne\n\t"
 		"scasb\n\t"
 		"decl %1\n\t"
-		"movl %4,%3\n"
-		"1:\tdecl %3\n\t"
+		"movl %7,%6\n"
+		"1:\tdecl %6\n\t"
 		"js 2f\n\t"
 		"lodsb\n\t"
 		"stosb\n\t"
@@ -96,13 +97,49 @@ static inline char * strncat(char * dest,const char * src,int count)
 		"jne 1b\n"
 		"2:\txorl %2,%2\n\t"
 		"stosb"
-		::"S" (src),"D" (dest),"a" (0),"c" (0xffffffff),"g" (count)
+		:"=&S" (d0), "=&D" (d1), "=&a" (d2)
+		:"0" (src),"1" (dest),"2" (0),"c" (0xffffffff),"g" (count)
 		);
 	return dest;
 }
 ```
 
+* **Line 4:** DF 플래그 클리어.
+* **Line 5~7**:
+  * **repne**: zero flag가 0일때 동안, 
+  * **scas**\(scan string\) ax/al/eax를 edi 레지스터의 값과 비교\(cmp\)하여 플래그를 설정한다.
+  * 즉, src의 NULL 위치 바로 전까지 이동한다는 말이다.
+* **Line 8**: ecx를 인자로 받은 count로 세팅한다.
+* **Line 9~14**: ecx를 감소시키며 1바이트를 복사한다\(esi -&gt; edi\)
 
+```c
+static inline int strcmp(const char * cs,const char * ct)
+{
+	int d0, d1;
+	register int __res __asm__("ax");
+	__asm__("cld\n"
+		"1:\tlodsb\n\t"
+		"scasb\n\t"
+		"jne 2f\n\t"
+		"testb %%al,%%al\n\t"
+		"jne 1b\n\t"
+		"xorl %%eax,%%eax\n\t"
+		"jmp 3f\n"
+		"2:\tmovl $1,%%eax\n\t"
+		"jl 3f\n\t"
+		"negl %%eax\n"
+		"3:"
+		:"=a" (__res, "=&D" (d0),"=&S" (d1)
+		:"1" (cs), "2" (ct));
+	return __res;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~7**: ds:esi에서 1바이트를 ax에 로드하고 es:edi의 값과 cmp한다.
+* **Line 8**: 같지 않다면 2번 라벨로 점프한다.
+* **Line 9~12**: ax가 NULL인지 확인한다. 아니라면 1번 라벨로 점프한다. 맞다면, eax를 0으로 세팅하고 리턴한다.
+* **Line  13~15**: 1을 리턴할지, 1을 리턴할지 결정한다.
 
 
 
