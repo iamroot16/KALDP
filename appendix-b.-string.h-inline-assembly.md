@@ -57,7 +57,7 @@ static inline char * strncpy(char * dest,const char *src,int count)
 ```c
 static inline char * strcat(char * dest,const char * src)
 {
-	int d0, d1, d2;
+	int d0, d1, d2, d3;
 	__asm__("cld\n\t"
 		"repne\n\t"
 		"scasb\n\t"
@@ -66,8 +66,8 @@ static inline char * strcat(char * dest,const char * src)
 		"stosb\n\t"
 		"testb %%al,%%al\n\t"
 		"jne 1b"
-		:"=&S"(d0), "=&D"(d1), "=&a"(d2)
-		:"0" (src),"1" (dest),"2" (0),"c" (0xffffffff));
+		:"=&S"(d0), "=&D"(d1), "=&a"(d2), ="=&c" (d3)
+		:"0" (src),"1" (dest),"2" (0),"3" (0xffffffff));
 	return dest;
 }
 ```
@@ -82,13 +82,13 @@ static inline char * strcat(char * dest,const char * src)
 ```c
 static inline char * strncat(char * dest,const char * src,int count)
 {
-	int d0, d1, d2;
+	int d0, d1, d2, d3;
 	__asm__("cld\n\t"
 		"repne\n\t"
 		"scasb\n\t"
 		"decl %1\n\t"
-		"movl %7,%6\n"
-		"1:\tdecl %6\n\t"
+		"movl %8,%7\n"
+		"1:\tdecl %7\n\t"
 		"js 2f\n\t"
 		"lodsb\n\t"
 		"stosb\n\t"
@@ -96,8 +96,8 @@ static inline char * strncat(char * dest,const char * src,int count)
 		"jne 1b\n"
 		"2:\txorl %2,%2\n\t"
 		"stosb"
-		:"=&S" (d0), "=&D" (d1), "=&a" (d2)
-		:"0" (src),"1" (dest),"2" (0),"c" (0xffffffff),"g" (count)
+		:"=&S" (d0), "=&D" (d1), "=&a" (d2), "=&c" (d3)
+		:"0" (src),"1" (dest),"2" (0),"3" (0xffffffff),"g" (count)
 		);
 	return dest;
 }
@@ -203,6 +203,7 @@ static inline char * strchr(const char * s,char c)
 ```c
 static inline char * strrchr(const char * s,char c)
 {
+	int d0, d1;
 	register char * __res __asm__("dx");
 	__asm__("cld\n\t"
 		"movb %%al,%%ah\n"
@@ -213,8 +214,179 @@ static inline char * strrchr(const char * s,char c)
 		"decl %0\n"
 		"2:\ttestb %%al,%%al\n\t"
 		"jne 1b"
-		:"=d" (__res):"0" (0),"S" (s),"a" (c));
+		:"=d" (__res), "=&S" (d0), "=&a" (d1)
+		:"0" (0),"1" (s),"2" (c));
 	return __res;
 }
 ```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6**: c를 ah으로 이동
+* **Line 7~8**:  ds:esi로부터 1바이트를 읽고, al에 저장하고 ah와 비교한다.
+* **Line 9**: 동일하지 않으면 2번 라벨로 점프한다.
+* **Line 10~11**: 발견한 주소를 \_\_res에 저장한다.
+* **Line 12~14**: NULL에 도달하지 않았다면 1번 라벨로 돌아간다.
+
+```c
+static inline int strspn(const char * cs, const char * ct)
+{
+	int d0, d1;
+	register char * __res __asm__("si");
+	__asm__("cld\n\t"
+		"movl %6,%%edi\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"notl %%ecx\n\t"
+		"decl %%ecx\n\t"
+		"movl %%ecx,%%edx\n"
+		"1:\tlodsb\n\t"
+		"testb %%al,%%al\n\t"
+		"je 2f\n\t"
+		"movl %6,%%edi\n\t"
+		"movl %%edx,%%ecx\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"je 1b\n"
+		"2:\tdecl %0"
+		:"=S" (__res), "=&a" (d0), "=&c" (d1)
+		:"1" (0),"2" (0xffffffff),"0" (cs),"g" (ct)
+		:"dx","di");
+	return __res-cs;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~11**: ct의 길이를 구하여 edx에 저장.
+* **Line 12~14**: esi에서 1바이트를 읽고 al에 저장, NULL인지 확인 
+* **Line 15~19**: ct 중 al과 일치하는 바이트가 있는지 확인, 없다면 리턴한다.
+* **Line 20**: 일치하는 문자가 있다면\(je\) 1번 라벨로 돌아가 다음 문자를 비교한다.
+
+```c
+static inline int strcspn(const char * cs, const char * ct)
+{
+	int d0, d1;
+	register char * __res __asm__("si");
+	__asm__("cld\n\t"
+		"movl %6,%%edi\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"notl %%ecx\n\t"
+		"decl %%ecx\n\t"
+		"movl %%ecx,%%edx\n"
+		"1:\tlodsb\n\t"
+		"testb %%al,%%al\n\t"
+		"je 2f\n\t"
+		"movl %6,%%edi\n\t"
+		"movl %%edx,%%ecx\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"jne 1b\n"
+		"2:\tdecl %0"
+		:"=S" (__res), "=&a" (d0), "=&c" (d1)
+		:"1" (0),"2" (0xffffffff),"0" (cs),"g" (ct)
+		:"dx","di");
+	return __res-cs;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~11**: ct의 길이를 구하여 edx에 저장.
+* **Line 12~14**: esi에서 1바이트를 읽고 al에 저장, NULL인지 확인 
+* **Line 15~19**: ct 중 al과 일치하는 바이트가 있는지 확인, 있다면 리턴한다.
+* **Line 20**: 일치하는 문자가 없다면\(jne\) 1번 라벨로 돌아가 다음 문자를 비교한다.
+
+```c
+static inline char * strpbrk(const char * cs,const char * ct)
+{
+	int d0, d1;
+	register char * __res __asm__("si");
+	__asm__("cld\n\t"
+		"movl %6,%%edi\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"notl %%ecx\n\t"
+		"decl %%ecx\n\t"
+		"movl %%ecx,%%edx\n"
+		"1:\tlodsb\n\t"
+		"testb %%al,%%al\n\t"
+		"je 2f\n\t"
+		"movl %6,%%edi\n\t"
+		"movl %%edx,%%ecx\n\t"
+		"repne\n\t"
+		"scasb\n\t"
+		"jne 1b\n\t"
+		"decl %0\n\t"
+		"jmp 3f\n"
+		"2:\txorl %0,%0\n"
+		"3:"
+		:"=S" (__res), "=&a" (d0), "=&c" (d1)
+		:"1" (0),"2" (0xffffffff),"0" (cs),"g" (ct)
+		:"dx","di");
+	return __res;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~11**: ct의 길이를 구하여 edx에 저장.
+* **Line 12~14**: esi에서 1바이트를 읽고 al에 저장, NULL인지 확인 
+* **Line 15~19**: ct 중 al과 일치하는 바이트가 있는지 확인, 있다면 찾은 주소를 리턴한다.
+* **Line 20**: 일치하는 문자가 없다면\(jne\) 1번 라벨로 돌아가 다음 문자를 비교한다.
+
+```c
+static inline char * strstr(const char * cs,const char * ct)
+{
+int d0, d1;
+register char * __res __asm__("ax");
+__asm__("cld\n\t" \
+    "movl %6,%%edi\n\t"
+    "repne\n\t"
+    "scasb\n\t"
+    "notl %%ecx\n\t"
+    "decl %%ecx\n\t"    /* NOTE! This also sets Z if searchstring='' */
+    "movl %%ecx,%%edx\n"
+    "1:\tmovl %6,%%edi\n\t"
+    "movl %%esi,%%eax\n\t"
+    "movl %%edx,%%ecx\n\t"
+    "repe\n\t"
+    "cmpsb\n\t"
+    "je 2f\n\t"     /* also works for empty string, see above */
+    "xchgl %%eax,%%esi\n\t"
+    "incl %%esi\n\t"
+    "cmpb $0,-1(%%eax)\n\t"
+    "jne 1b\n\t"
+    "xorl %%eax,%%eax\n\t"
+    "2:"
+    :"=a" (__res), "=&S" (d0), "=&c" (d1)
+    :"0" (0),"2" (0xffffffff),"4" (cs),"g" (ct)
+    :"dx","di");
+return __res;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~11**: ct의 길이를 구하여 edx에 저장.
+* **Line 12~14**: ct를 edi에 세팅, esi를 eax에 세팅, ecx에 구한 길이를 저장. 
+* **Line 15~17**: cs에서 ct와 일치하는 문자열이 있는지 확인, 있다면 찾은 주소를 리턴한다.
+* **Line 18~22**: 문자열 끝에 도달하면, 0을 리턴 아니라면 index를 증가시켜 1번 라벨로 돌아간다.
+
+```c
+static inline int strlen(const char * s)
+{
+int d0;
+register int __res __asm__("cx");
+__asm__("cld\n\t"
+    "repne\n\t"
+    "scasb\n\t"
+    "notl %0\n\t"
+    "decl %0"
+    :"=c" (__res),"=&D" (d0)
+    :"1" (s),"a" (0),"0" (0xffffffff));
+return __res;
+}
+```
+
+* **Line 5:** DF 플래그 클리어.
+* **Line 6~10**: s의 길이를 구하여 \_\_res에 저장.
+
+
 
